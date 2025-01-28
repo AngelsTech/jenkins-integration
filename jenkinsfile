@@ -8,7 +8,7 @@ pipeline {
   }
   environment {
   GIT_REPO = 'git@github.com:mawais003/private-repo.git'
-  SSH_CREDENTIALS_ID = 'jenkins'
+  token= 'git-token'
   TARGET_DIR = '/var/lib/jenkins/pipeline'
   VENV_PATH = '/var/lib/jenkins/venv'
   } 
