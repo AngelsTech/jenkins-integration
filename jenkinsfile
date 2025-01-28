@@ -1,74 +1,76 @@
 pipeline {
- agent any
- parameters {
- string(name: 'DOCX_FILE_NAME', defaultValue: 'example.docx',
-description: 'Name of the DOCX file to convert')
- }
-environment {
- GIT_REPO = 'git@github.com:mawais003/private-repo.git'
- SSH_CREDENTIALS_ID = 'jenkins'
- TARGET_DIR = '/var/lib/jenkins/pipeline'
- VENV_PATH = '/var/lib/jenkins/venv'
- }
- stages {
- stage('Git Pull') {
- steps {
- checkout([
- $class: 'GitSCM',
- branches: [[name: '*/main']],
- doGenerateSubmoduleConfigurations: false,
- extensions: [],
- submoduleCfg: [],
- userRemoteConfigs: [[
- url: env.GIT_REPO,
- credentialsId: env.SSH_CREDENTIALS_ID
- ]]
- ])
- }
- }
- stage('Copy DOCX File') {
- steps {
- sh """
- cp \${WORKSPACE}/\${DOCX_FILE_NAME} ${TARGET_DIR}
- """
- }
- }
- stage('Set up Virtual Environment') {
- steps {
- sh """
- if [ ! -f "${VENV_PATH}/bin/activate" ]; then
- python3 -m venv ${VENV_PATH}
- fi
- """
- }
- }
- stage('Install Dependencies') {
- steps {
- sh """
- ${VENV_PATH}/bin/pip install --upgrade pip
- ${VENV_PATH}/bin/pip install yagmail
- """
- }
- }
- stage('Convert DOCX to PDF') {
- steps {
- sh """
-cd ${TARGET_DIR}
- bash ./convert_docx_to_pdf.sh \${DOCX_FILE_NAME}
- """
- }
- }
- stage('Send Email') {
- steps {
- script {
- def pdfFileName = DOCX_FILE_NAME.replace('.docx',
-'.pdf')
- sh """
- ${VENV_PATH}/bin/python
-/var/lib/jenkins/pipeline/send_email.py ${TARGET_DIR}/${pdfFileName}
- """
-    }
-   }
+  agent  {
+    label  'any'
   }
+  parameters {
+  string(name: 'DOCX_FILE_NAME', defaultValue: 'example.docx',
+  description: 'Name of the DOCX file to convert')
+  }
+  environment {
+  GIT_REPO = 'git@github.com:mawais003/private-repo.git'
+  SSH_CREDENTIALS_ID = 'jenkins'
+  TARGET_DIR = '/var/lib/jenkins/pipeline'
+  VENV_PATH = '/var/lib/jenkins/venv'
+  } 
+  stages {
+    stage('Git Pull') {
+      steps {
+      checkout([
+        $class: 'GitSCM',
+        branches: [[name: '*/main']],
+        doGenerateSubmoduleConfigurations: false,
+        extensions: [],
+        submoduleCfg: [],
+        userRemoteConfigs: [[
+        url: env.GIT_REPO,
+        credentialsId: env.SSH_CREDENTIALS_ID
+          ]]
+        ])
+       }
+    }     
+    stage('Copy DOCX File') {
+      steps {
+        sh """
+        cp \${WORKSPACE}/\${DOCX_FILE_NAME} ${TARGET_DIR}
+         """
+        }
+    }
+    stage('Set up Virtual Environment') {
+      steps {
+        sh """
+          if [ ! -f "${VENV_PATH}/bin/activate" ]; then
+          python3 -m venv ${VENV_PATH}
+         fi
+          """
+       }
+    }
+    stage('Install Dependencies') {
+      steps {
+        sh """
+        ${VENV_PATH}/bin/pip install --upgrade pip
+        ${VENV_PATH}/bin/pip install yagmail
+         """
+         }
+    }
+    stage('Convert DOCX to PDF') {
+      steps {
+        sh """
+         cd ${TARGET_DIR}
+           bash ./convert_docx_to_pdf.sh \${DOCX_FILE_NAME}
+           """
+       }
+    } 
+    stage('Send Email') {
+      steps {
+        script {
+          def pdfFileName = DOCX_FILE_NAME.replace('.docx',
+          '.pdf')
+           sh """
+           ${VENV_PATH}/bin/python
+           /var/lib/jenkins/pipeline/send_email.py ${TARGET_DIR}/${pdfFileName}
+           """
+            }
+           }
+        }
+    }
  }
-}
