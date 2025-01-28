@@ -7,7 +7,7 @@ pipeline {
   description: 'Name of the DOCX file to convert')
   }
   environment {
-  GIT_REPO = 'git@github.com:mawais003/private-repo.git'
+  GIT_REPO = 'https://github.com/AngelsTech/jenkins-integration'
   token= 'git-token'
   TARGET_DIR = '/var/lib/jenkins/pipeline'
   VENV_PATH = '/var/lib/jenkins/venv'
