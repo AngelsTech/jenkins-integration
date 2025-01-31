@@ -1,76 +1,65 @@
 pipeline {
-  agent  {
-    label  'any'
-  }
-  parameters {
-  string(name: 'DOCX_FILE_NAME', defaultValue: 'example.docx',
-  description: 'Name of the DOCX file to convert')
-  }
-  environment {
-  GIT_REPO = 'https://github.com/AngelsTech/jenkins-integration'
-  token= 'git-token'
-  TARGET_DIR = '/var/lib/jenkins/pipeline'
-  VENV_PATH = '/var/lib/jenkins/venv'
-  } 
-  stages {
-    stage('Git Pull') {
-      steps {
-      checkout([
-        $class: 'GitSCM',
-        branches: [[name: '*/main']],
-        doGenerateSubmoduleConfigurations: false,
-        extensions: [],
-        submoduleCfg: [],
-        userRemoteConfigs: [[
-        url: env.GIT_REPO,
-        credentialsId: env.SSH_CREDENTIALS_ID
-          ]]
-        ])
-       }
-    }     
-    stage('Copy DOCX File') {
-      steps {
-        sh """
-        cp \${WORKSPACE}/\${DOCX_FILE_NAME} ${TARGET_DIR}
-         """
-        }
+    agent any
+
+    environment {
+        GIT_REPO = 'https://github.com/AngelsTech/jenkins-integration.git'  // Replace with your Git repository URL
+        DOCX_FILE_PATH = 'network_cheatsheet.docx'   // Path to the Word file in the root of the repository
+        PDF_FILE_PATH = 'network_cheatsheet.pdf'     // Path where the PDF will be saved in the root of the repository
     }
-    stage('Set up Virtual Environment') {
-      steps {
-        sh """
-          if [ ! -f "${VENV_PATH}/bin/activate" ]; then
-          python3 -m venv ${VENV_PATH}
-         fi
-          """
-       }
-    }
-    stage('Install Dependencies') {
-      steps {
-        sh """
-        ${VENV_PATH}/bin/pip install --upgrade pip
-        ${VENV_PATH}/bin/pip install yagmail
-         """
-         }
-    }
-    stage('Convert DOCX to PDF') {
-      steps {
-        sh """
-         cd ${TARGET_DIR}
-           bash ./convert_docx_to_pdf.sh \${DOCX_FILE_NAME}
-           """
-       }
-    } 
-    stage('Send Email') {
-      steps {
-        script {
-          def pdfFileName = DOCX_FILE_NAME.replace('.docx',
-          '.pdf')
-           sh """
-           ${VENV_PATH}/bin/python
-           /var/lib/jenkins/pipeline/send_email.py ${TARGET_DIR}/${pdfFileName}
-           """
+
+    stages {
+        stage('Checkout Git Repository') {
+            steps {
+                script {
+                    // Pull the latest code from the Git repo
+                    git url: "${GIT_REPO}"
+                }
             }
-           }
+        }
+        
+        stage('Install Dependencies') {
+            steps {
+                script {
+                    // Install Python dependencies
+                    sh '''
+                    pip install python-docx reportlab
+                    '''
+                }
+            }
+        }
+        
+        stage('Convert Word to PDF') {
+            steps {
+                script {
+                    // Run the Python script to convert Word to PDF
+                    sh """
+                    python3 convert.py ${DOCX_FILE_PATH} ${PDF_FILE_PATH}
+                    """
+                }
+            }
+        }
+
+        stage('Email PDF to Team') {
+            steps {
+                script {
+                    // Send email with the converted PDF attachment
+                    emailext (
+                        subject: "Converted Word Document to PDF",
+                        body: "The Word document has been successfully converted to a PDF. Please find the attachment.",
+                        attachmentsPattern: "${PDF_FILE_PATH}",
+                        to: "ngelstek@gmail.com"  // Replace with your team's email address
+                    )
+                }
+            }
         }
     }
- }
+    
+    post {
+        success {
+            echo 'Process completed successfully!'
+        }
+        failure {
+            echo 'Process failed!'
+        }
+    }
+}
